@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Randomize the board
         randomizeBoard(100);
+        ensureMiddleEmpty();
         updateBoard();
     }
     
@@ -55,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create initial game state with winning positions and empty middle
     function createInitialState() {
         // Create a deep copy of the target positions
-        return JSON.parse(JSON.stringify(targetPositions));
+        return shuffle(targetPositions);
     }
 
     function shuffle(arr) {
@@ -111,14 +112,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 emptyPos = { row: randomMove.row, col: randomMove.col };
             }
         }
-         // Ensure the middle is empty
+    }
+    
+    function ensureMiddleEmpty() {
+        // Ensure the middle is empty
         if (gameState[1][1] !== null) {
             // Find the empty cell and swap it with the middle
             const emptyPos = findEmptyCell();
             swapCells(1, 1, emptyPos.row, emptyPos.col);
         }
     }
-    
+
     // Handle cell click
     function handleCellClick(row, col) {
         const emptyCell = findEmptyCell();
