@@ -27,6 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (targetPositions[row][col]) {
                     cell.dataset.target = targetPositions[row][col];
                 }
+                else {
+                    cell.dataset.target = 'empty';
+                }
                 
                 if (gameState[row][col]) {
                     cell.textContent = gameState[row][col].toUpperCase().charAt(0);
@@ -56,7 +59,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create initial game state with winning positions and empty middle
     function createInitialState() {
         // Create a deep copy of the target positions
-        return shuffle(targetPositions);
+        return shuffle([
+            shuffle(targetPositions[0]),
+            shuffle(targetPositions[1]),
+            shuffle(targetPositions[2]),
+        ]);
     }
 
     function shuffle(arr) {
@@ -144,16 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Swap two cells in the game state with animation
     function swapCells(row1, col1, row2, col2, checkWin = false) {
-        // Get the cells from the DOM
-        const cells = Array.from(document.querySelectorAll('.cell'));
-        const index1 = row1 * size + col1;
-        const index2 = row2 * size + col2;
-        const cell1 = cells[index1];
-        const cell2 = cells[index2];
-        
-        // Add animation class
-        cell1.style.transform = 'scale(0.95)';
-        cell2.style.transform = 'scale(0.95)';
         
         // Update the game state
         const temp = gameState[row1][col1];
@@ -162,12 +159,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Update the visual board (don't check win here)
         updateBoard(checkWin);
-        
-        // Reset animation
-        setTimeout(() => {
-            if (cell1) cell1.style.transform = '';
-            if (cell2) cell2.style.transform = '';
-        }, 300);
     }
     
     // Find the empty cell
@@ -228,7 +219,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Only check for win if explicitly requested (after player moves)
         if (checkWinCondition && checkWin()) {
             messageEl.textContent = 'Congratulations! You won!';
-            messageEl.style.color = '#4CAF50';
         }
     }
     
