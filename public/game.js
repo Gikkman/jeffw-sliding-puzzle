@@ -3,69 +3,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetBtn = document.getElementById('reset-btn');
     const messageEl = document.getElementById('message');
     
-    // Game state
-    let gameState = [];
-    const size = 3;
-    const colors = ['red', 'blue', 'yellow', 'green'];
-    
-    // Initialize the game
-    function initGame() {
-        // Clear the board
-        board.innerHTML = '';
-        messageEl.textContent = '';
-        
-        // Create initial game state
-        gameState = createInitialState();
-        
-        // Create the board
-        for (let row = 0; row < size; row++) {
-            for (let col = 0; col < size; col++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                
-                // Set target position border
-                if (targetPositions[row][col]) {
-                    cell.dataset.target = targetPositions[row][col];
-                }
-                else {
-                    cell.dataset.target = 'empty';
-                }
-                
-                if (gameState[row][col]) {
-                    cell.textContent = gameState[row][col].toUpperCase().charAt(0);
-                    cell.dataset.color = gameState[row][col];
-                } else {
-                    cell.classList.add('empty');
-                }
-                
-                cell.addEventListener('click', () => handleCellClick(row, col));
-                board.appendChild(cell);
-            }
-        }
-        
-        // Randomize the board
-        randomizeBoard(100);
-        ensureMiddleEmpty();
-        updateBoard();
-    }
-    
+    // GAME_STATE is an array in an array. 
+    // The arrays represent rows, and the elements are cells.
+    const SIZE = 3;
+    const GAME_STATE = [];
+
     // Define the target positions for the win state
     const targetPositions = [
         ['blue', 'red', 'yellow'],
         ['green', null, 'green'],
         ['blue', 'red', 'yellow']
     ];
-
-    // Create initial game state with winning positions and empty middle
-    function createInitialState() {
-        // Create a deep copy of the target positions
-        return shuffle([
-            shuffle(targetPositions[0]),
-            shuffle(targetPositions[1]),
-            shuffle(targetPositions[2]),
-        ]);
+    
+    function initGame() {
+        // Clear the board's content and the win message
+        board.innerHTML = '';
+        messageEl.textContent = '';
+        
+        // Create initial game state
+        createInitialState();
+        ensureMiddleEmpty();
+        createBoard();
+        updateBoardGraphics();
     }
 
+    function createInitialState() {
+        // Clear the old state
+        while(GAME_STATE.length > 0) {
+            GAME_STATE.pop();
+        }
+        
+        // Create a copy of target positions and shuffle it
+        const newState = shuffle([...targetPositions[0], ...targetPositions[1], ...targetPositions[2]]);
+        
+        // Push the shuffled rows into the game state
+        GAME_STATE.push(
+            [newState[0], newState[1], newState[2]],
+            [newState[3], newState[4], newState[5]],
+            [newState[6], newState[7], newState[8]]
+        );
+    }
+
+    // Fisher-Yates shuffle an input array, and return a copy
     function shuffle(arr) {
         let array = JSON.parse(JSON.stringify(arr))
         let currentIndex = array.length;
@@ -84,127 +63,93 @@ document.addEventListener('DOMContentLoaded', () => {
         return array;
     }
     
-    // Randomize the board by making random valid moves
-    function randomizeBoard(moves) {
-        const directions = [
-            { row: -1, col: 0 },  // up
-            { row: 1, col: 0 },   // down
-            { row: 0, col: -1 },  // left
-            { row: 0, col: 1 }    // right
-        ];
-        
-        let emptyPos = { row: 1, col: 1 }; // Start with middle as empty
-        
-        for (let i = 0; i < moves; i++) {
-            const validMoves = [];
-            
-            // Find all valid moves that don't involve the middle column vertically
-            for (const dir of directions) {
-                const newRow = emptyPos.row + dir.row;
-                const newCol = emptyPos.col + dir.col;
-                
-                // Check if move is valid and not moving into the middle from top/bottom
-                if (isValidMove(emptyPos.row, emptyPos.col, newRow, newCol)) {
-                    // Only allow moves that don't involve vertical movement in the middle column
-                    if (!(newCol === 1 && emptyPos.col === 1 && newRow !== emptyPos.row)) {
-                        validMoves.push({ row: newRow, col: newCol });
-                    }
-                }
-            }
-            
-            // Make a random valid move
-            if (validMoves.length > 0) {
-                const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
-                swapCells(emptyPos.row, emptyPos.col, randomMove.row, randomMove.col);
-                emptyPos = { row: randomMove.row, col: randomMove.col };
-            }
-        }
-    }
-    
     function ensureMiddleEmpty() {
-        // Ensure the middle is empty
-        if (gameState[1][1] !== null) {
+        if (GAME_STATE[1][1] !== null) {
             // Find the empty cell and swap it with the middle
-            const emptyPos = findEmptyCell();
-            swapCells(1, 1, emptyPos.row, emptyPos.col);
-        }
-    }
-
-    // Handle cell click
-    function handleCellClick(row, col) {
-        const emptyCell = findEmptyCell();
-        
-        // Check if the clicked cell is adjacent to the empty cell
-        if ((Math.abs(row - emptyCell.row) === 1 && col === emptyCell.col) ||
-            (Math.abs(col - emptyCell.col) === 1 && row === emptyCell.row)) {
-            
-            // Check if move is valid (no vertical moves in middle column)
-            if (col === 1 && emptyCell.col === 1 && row !== emptyCell.row) {
-                return; // Invalid vertical move in middle column
-            }
-            
-            // Swap the cells and check for win
-            swapCells(row, col, emptyCell.row, emptyCell.col);
-            updateBoard(true); // Pass true to check win condition after player move
+            const emptyPos = findEmptyCell(GAME_STATE);
+            swapCells(1, 1, emptyPos.row, emptyPos.col, GAME_STATE);
         }
     }
     
-    // Swap two cells in the game state with animation
-    function swapCells(row1, col1, row2, col2, checkWin = false) {
-        
-        // Update the game state
-        const temp = gameState[row1][col1];
-        gameState[row1][col1] = gameState[row2][col2];
-        gameState[row2][col2] = temp;
-        
-        // Update the visual board (don't check win here)
-        updateBoard(checkWin);
+    function swapCells(row1, col1, row2, col2) {
+        const temp = GAME_STATE[row1][col1];
+        GAME_STATE[row1][col1] = GAME_STATE[row2][col2];
+        GAME_STATE[row2][col2] = temp;
     }
     
-    // Find the empty cell
     function findEmptyCell() {
-        for (let row = 0; row < size; row++) {
-            for (let col = 0; col < size; col++) {
-                if (gameState[row][col] === null) {
+        for (let row = 0; row < SIZE; row++) {
+            for (let col = 0; col < SIZE; col++) {
+                if (GAME_STATE[row][col] === null) {
                     return { row, col };
                 }
             }
         }
         return null;
     }
-    
-    // Check if a move is valid
-    function isValidMove(fromRow, fromCol, toRow, toCol) {
-        // Check if out of bounds
-        if (toRow < 0 || toRow >= size || toCol < 0 || toCol >= size) {
-            return false;
+
+
+
+    function createBoard() {
+        // Create the cells, their initial css classes, and add them to the board
+        for (let row = 0; row < SIZE; row++) {
+            for (let col = 0; col < SIZE; col++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                
+                // Set target position border
+                if (targetPositions[row][col]) {
+                    cell.dataset.target = targetPositions[row][col];
+                }
+                else {
+                    cell.dataset.target = 'empty';
+                }
+                
+                if (GAME_STATE[row][col]) {
+                    cell.textContent = GAME_STATE[row][col].toUpperCase().charAt(0);
+                    cell.dataset.color = GAME_STATE[row][col];
+                } else {
+                    cell.classList.add('empty');
+                }
+                
+                cell.onmousedown = (e) => { e.preventDefault(); handleCellClick(row, col); };
+                cell.ontouchstart = (e) => { e.preventDefault(); handleCellClick(row, col); };
+                board.appendChild(cell);
+            }
         }
+    }
+
+    function handleCellClick(clickRow, clickCol) {
+        const emptyCell = findEmptyCell(GAME_STATE);
         
-        // Check if it's a horizontal or vertical move (not diagonal)
-        if (fromRow !== toRow && fromCol !== toCol) {
-            return false;
+        // Check if the clicked cell is adjacent to the empty cell
+        if ((Math.abs(clickRow - emptyCell.row) === 1 && clickCol === emptyCell.col) ||
+            (Math.abs(clickCol - emptyCell.col) === 1 && clickRow === emptyCell.row)) {
+            
+            // Check if move is valid (no vertical moves in middle column)
+            if (clickCol === 1 && emptyCell.col === 1 && clickRow !== emptyCell.row) {
+                return;
+            }
+            
+            swapCells(clickRow, clickCol, emptyCell.row, emptyCell.col, GAME_STATE);
+            updateBoardGraphics();
+            if (isGameWon()) {
+                messageEl.textContent = 'Congratulations! You won!';
+            }
         }
-        
-        // Check if moving vertically in the middle column
-        if (fromCol === 1 && toCol === 1 && fromRow !== toRow) {
-            return false;
-        }
-        
-        return true;
     }
     
-    // Update the visual board based on game state with animations
-    function updateBoard(checkWinCondition = false) {
+    function updateBoardGraphics() {
         const cells = document.querySelectorAll('.cell');
         let index = 0;
         
-        for (let row = 0; row < size; row++) {
-            for (let col = 0; col < size; col++) {
+        for (let row = 0; row < SIZE; row++) {
+            for (let col = 0; col < SIZE; col++) {
                 const cell = cells[index];
                 
-                if (gameState[row][col]) {
-                    cell.textContent = gameState[row][col].toUpperCase().charAt(0);
-                    cell.dataset.color = gameState[row][col];
+                if (GAME_STATE[row][col]) {
+                    cell.textContent = GAME_STATE[row][col].toUpperCase().charAt(0);
+                    cell.dataset.color = GAME_STATE[row][col];
                     cell.classList.remove('empty');
                 } else {
                     cell.textContent = '';
@@ -215,18 +160,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 index++;
             }
         }
-        
-        // Only check for win if explicitly requested (after player moves)
-        if (checkWinCondition && checkWin()) {
-            messageEl.textContent = 'Congratulations! You won!';
-        }
     }
     
-    // Check if the player has won
-    function checkWin() {
-        for (let row = 0; row < size; row++) {
-            for (let col = 0; col < size; col++) {
-                if (gameState[row][col] !== targetPositions[row][col]) {
+    function isGameWon() {
+        for (let row = 0; row < SIZE; row++) {
+            for (let col = 0; col < SIZE; col++) {
+                if (GAME_STATE[row][col] !== targetPositions[row][col]) {
                     return false;
                 }
             }
@@ -234,9 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     }
     
-    // Event listeners
     resetBtn.addEventListener('click', initGame);
-    
-    // Start the game
     initGame();
 });
