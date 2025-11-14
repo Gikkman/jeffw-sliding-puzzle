@@ -137,6 +137,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Check if move is valid (no vertical moves in middle column)
             if (clickCol === 1 && emptyCell.col === 1 && clickRow !== emptyCell.row) {
+                // Show invalid move feedback
+                const cells = document.querySelectorAll('.cell');
+                const cellIndex = clickRow * SIZE + clickCol;
+                const cell = cells[cellIndex];
+                cell.classList.add('invalid-move');                
+                setTimeout(() => {
+                    cell.classList.remove('invalid-move');
+                }, 400);
+                
                 return;
             }
             
