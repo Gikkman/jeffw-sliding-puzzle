@@ -25,26 +25,23 @@ document.addEventListener('DOMContentLoaded', () => {
      * GAME STUFF
      ******************************************************************************/
     function initGame() {
-        // Reset game state
+        moveCounter = 0;
         boardEl.innerHTML = '';
-        messageEl.textContent = '';
-        moveCounterEl.textContent = 0;
         
-        // Create initial game state
-        createInitialState();
+        resetGameState();
         ensureMiddleEmpty();
-        createBoard();
+        createBoardElements();
         updateBoardGraphics();
     }
 
-    function createInitialState() {
+    function resetGameState() {
         // Clear the old state
         while(GAME_STATE.length > 0) {
             GAME_STATE.pop();
         }
         
         // Create a copy of target positions and shuffle it
-        const newState = shuffle([...TARGET_STATE]);
+        const newState = shuffle(TARGET_STATE);
         
         // Push the shuffled rows into the game state
         GAME_STATE.push(...newState);
@@ -69,20 +66,32 @@ document.addEventListener('DOMContentLoaded', () => {
         return array;
     }
     
+    /**
+     * Ensure the middle cell is empty by swapping it with the empty cell.
+     */
     function ensureMiddleEmpty() {
         if (GAME_STATE[MIDDLE_CELL_INDEX] !== null) {
             // Find the empty cell and swap it with the middle
-            const emptyCell = findEmptyCell();
-            swapCells(MIDDLE_CELL_INDEX, emptyCell);
+            const emptyCellIndex = findEmptyCell();
+            swapCells(MIDDLE_CELL_INDEX, emptyCellIndex);
         }
     }
     
-    function swapCells(cell1, cell2) {
-        const temp = GAME_STATE[cell1];
-        GAME_STATE[cell1] = GAME_STATE[cell2];
-        GAME_STATE[cell2] = temp;
+    /**
+     * Swap the contents of two cells in the game state.
+     * @param {number} cellIndex1 - The index of the first cell.
+     * @param {number} cellIndex2 - The index of the second cell.
+     */
+    function swapCells(cellIndex1, cellIndex2) {
+        const temp = GAME_STATE[cellIndex1];
+        GAME_STATE[cellIndex1] = GAME_STATE[cellIndex2];
+        GAME_STATE[cellIndex2] = temp;
     }
     
+    /**
+     * Find the index of the empty cell in the game state.
+     * @returns {number} The index of the empty cell.
+     */
     function findEmptyCell() {
         for (let cellIndex = 0; cellIndex < SIZE; cellIndex++) {
             if (GAME_STATE[cellIndex] === null) {
@@ -92,30 +101,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
-
-    function createBoard() {
+    /**
+     * Create the board's DOM elements and add them to the board.
+     */
+    function createBoardElements() {
         // Create the cells, their initial css classes, and add them to the board
         for (let cellIndex = 0; cellIndex < SIZE; cellIndex++) {
             const cellElement = document.createElement('div');
             cellElement.className = 'cell';
             
-            // Set target position border
+            cellElement.dataset.index = cellIndex;
+            cellElement.dataset.target = 'blank';
+            cellElement.dataset.current = 'blank';
+
             if (TARGET_STATE[cellIndex]) {
                 cellElement.dataset.target = TARGET_STATE[cellIndex];
             }
-            else {
-                cellElement.dataset.target = 'empty';
-            }
-            
             if (GAME_STATE[cellIndex]) {
                 cellElement.textContent = GAME_STATE[cellIndex].toUpperCase().charAt(0);
-                cellElement.dataset.color = GAME_STATE[cellIndex];
-            } else {
-                cellElement.classList.add('empty');
+                cellElement.dataset.current = GAME_STATE[cellIndex];
             }
             
-            cellElement.onmousedown = (e) => { e.preventDefault(); handleCellClick(cellIndex); };
-            cellElement.ontouchstart = (e) => { e.preventDefault(); handleCellClick(cellIndex); };
+            cellElement.onmousedown = (e) => { handleCellClick(e.target.dataset.index); };
+            cellElement.ontouchstart = (e) => { handleCellClick(e.target.dataset.index); };
             boardEl.appendChild(cellElement);
         }
     }
@@ -135,8 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Check if move is valid (no vertical moves in middle column)
             if (clickedCellIndex % 3 === 1 && emptyCellIndex % 3 === 1 && clickedCellIndex !== emptyCellIndex) {
                 // Show invalid move feedback
-                const cellElements = document.querySelectorAll('.cell');
-                const cellElement = cellElements[clickedCellIndex];
+                const cellElement = document.querySelector(`.cell[data-index="${clickedCellIndex}"]`);
                 cellElement.classList.add('invalid-move');                
                 setTimeout(() => {
                     cellElement.classList.remove('invalid-move');
@@ -155,19 +162,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function updateBoardGraphics() {
-        const cellElements = document.querySelectorAll('.cell');
-        
+        const cellElements = document.querySelectorAll('.cell').values().toArray().sort((a, b) => a.dataset.index - b.dataset.index);
         for (let cellIndex = 0; cellIndex < SIZE; cellIndex++) {
             const cellElement = cellElements[cellIndex];
                 
             if (GAME_STATE[cellIndex]) {
                 cellElement.textContent = GAME_STATE[cellIndex].toUpperCase().charAt(0);
-                cellElement.dataset.color = GAME_STATE[cellIndex];
-                cellElement.classList.remove('empty');
+                cellElement.dataset.current = GAME_STATE[cellIndex];
             } else {
                 cellElement.textContent = '';
-                cellElement.removeAttribute('data-color');
-                cellElement.classList.add('empty');
+                cellElement.dataset.current = 'blank';
             }
         }
         moveCounterEl.textContent = moveCounter;
